@@ -1,11 +1,5 @@
 #include "commandline.h"
-
-std::wstring CommandLine::ToLower(std::wstring const &str) {
-    std::wstring result;
-    for (size_t i = 0; i < str.length(); i++)
-        result += tolower(static_cast<unsigned char>(str[i]));
-    return result;
-}
+#include "utils.h"
 
 CommandLine::CommandLine(int argc, wchar_t *argv[], std::set<std::wstring> const &arguments, std::set<std::wstring> const &options) {
     std::set<std::wstring> _arguments;

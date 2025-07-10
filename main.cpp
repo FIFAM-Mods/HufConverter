@@ -1,15 +1,6 @@
-#include <string>
-#include <vector>
-#include <set>
-#include <filesystem>
-#include <cmath>
-#include <numeric>
 #include "commandline.h"
 #include "utils.h"
 #include "Text.h"
-#include <fstream>
-#include <locale>
-#include <codecvt>
 #include "message.h"
 #include "TextFileTable.h"
 #include "xlsxwriter.h"
@@ -72,7 +63,7 @@ int wmain(int argc, wchar_t *argv[]) {
             format = { FILETYPE_TR, FILETYPE_HUF };
     }
     if (format.first == FILETYPE_NOTSET || format.second == FILETYPE_NOTSET) {
-        ErrorMessage("Unknown operation type\nPlease use HufConverterGUI.py if you don't understand how to work with command-line tool");
+        ErrorMessage(L"Unknown operation type\nPlease use HufConverterGUI.py if you don't understand how to work with command-line tool");
         return ErrorType::UNKNOWN_OPERATION_TYPE;
     }
     std::filesystem::path in, out, keysPath = L"keys.txt";
@@ -95,7 +86,7 @@ int wmain(int argc, wchar_t *argv[]) {
                 { L"fm14", GAME_FM09 }
             };
             if (!gameName.contains(gameStr)) {
-                ErrorMessage("Invalid game value");
+                ErrorMessage(L"Invalid game value");
                 return ErrorType::INVALID_GAME;
             }
             game = gameName[gameStr];
@@ -103,7 +94,7 @@ int wmain(int argc, wchar_t *argv[]) {
         else if (arg == L"input" || arg == L"i") {
             in = value;
             if (!std::filesystem::exists(in)) {
-                ErrorMessage("Input path does not exist");
+                ErrorMessage(L"Input path does not exist");
                 return ErrorType::INVALID_INPUT_PATH;
             }
         }
@@ -112,7 +103,7 @@ int wmain(int argc, wchar_t *argv[]) {
             if (out.has_parent_path()) {
                 std::error_code ec;
                 if (!std::filesystem::create_directories(out.parent_path(), ec)) {
-                    ErrorMessage("Unable to create output folder");
+                    ErrorMessage(L"Unable to create output folder");
                     return ErrorType::UNABLE_TO_CREATE_OUTPUT_FOLDER;
                 }
             }
@@ -123,7 +114,7 @@ int wmain(int argc, wchar_t *argv[]) {
             else {
                 keysPath = value;
                 if (!std::filesystem::exists(keysPath)) {
-                    ErrorMessage("Keys path does not exist");
+                    ErrorMessage(L"Keys path does not exist");
                     return ErrorType::INVALID_KEYS_PATH;
                 }
             }
@@ -140,7 +131,7 @@ int wmain(int argc, wchar_t *argv[]) {
         }
     }
     if (in.empty()) {
-        ErrorMessage("Input path is not specified");
+        ErrorMessage(L"Input path is not specified");
         return ErrorType::NO_INPUT_PATH;
     }
     if (out.empty()) {
@@ -213,7 +204,7 @@ int wmain(int argc, wchar_t *argv[]) {
     ErrorType error = ErrorType::NONE;
 
     if (!success) {
-        ErrorMessage("Input file reading error");
+        ErrorMessage(L"Input file reading error");
         error = ErrorType::INPUT_FILE_READING_ERROR;
     }
     else {
@@ -264,14 +255,6 @@ int wmain(int argc, wchar_t *argv[]) {
                     for (unsigned int v = 0; v < 20; v++)
                         AddTranslationKey(Format(L"IDS_WEBSITE_%05d_%d", i, v));
                 }
-                //for (unsigned int i = 0; i <= 9999; i++)
-                //    AddTranslationKey(Format(L"TM09_INVALID_%08d", i));
-                //for (unsigned int i = 0; i <= 9999; i++)
-                //    AddTranslationKey(Format(L"TM09_CATEGORY_NAME_%04d", i));
-                //for (unsigned int i = 0; i <= 9999; i++)
-                //    AddTranslationKey(Format(L"TM09_CATEGORY_ENUM_%04d", i));
-                //for (unsigned int i = 0; i <= 9999; i++)
-                //    AddTranslationKey(Format(L"TM09_TEXTBLOCK_HEADER_%06d", i));
                 for (unsigned int i = 0; i <= 5000; i++) {
                     for (unsigned int v = 0; v <= 20; v++)
                         AddTranslationKey(Format(L"TM09_%06d_%02d", i, v));
@@ -280,10 +263,6 @@ int wmain(int argc, wchar_t *argv[]) {
                     for (unsigned int v = 0; v <= 20; v++)
                         AddTranslationKey(Format(L"TM09LIVE_%06d_%02d", i, v));
                 }
-                //for (unsigned int i = 0; i <= 0xFFFF; i++)
-                //    AddTranslationKey(Format(L"TM09_CONDITION_%08X", i));
-                //for (unsigned int i = 0; i <= 0xFFFF; i++)
-                //    AddTranslationKey(Format(L"TM09_RESULT_%08X", i));
             }
             TextFileTable *textFile = nullptr;
             lxw_workbook *excelFile = nullptr;
@@ -327,18 +306,6 @@ int wmain(int argc, wchar_t *argv[]) {
                         const wchar_t *value = text.GetByHashKey(entry.key);
                         if (!value)
                             continue;
-                        //std::wstring str = value;
-                        //std::wstring processed;
-                        //for (size_t j = 0; j < str.length(); ++j) {
-                        //    if (str[j] == L'\n')
-                        //        processed += L"{\\n}";
-                        //    else if (str[j] == L'\r')
-                        //        processed += L"{\\r}";
-                        //    else if (str[j] == L'\t')
-                        //        processed += L"{\\t}";
-                        //    else
-                        //        processed += str[j];
-                        //}
                         std::wstring key = std::to_wstring(entry.key);
                         if (format.second == FILETYPE_TR ||!keysPath.empty()) {
                             if (keys.contains(entry.key)) {
@@ -355,8 +322,6 @@ int wmain(int argc, wchar_t *argv[]) {
                         else if (textFile)
                             textFile->AddRow({ key, value });
                     }
-                    //::Message(Format(L"Total named: %d/%d (%.2f%%)", totalNamed, text.m_nNumStringHashes,
-                    //    (float)totalNamed / (float)text.m_nNumStringHashes * 100.0f));
                 }
             }
             if (excelFile)
@@ -367,7 +332,7 @@ int wmain(int argc, wchar_t *argv[]) {
             }
         }
         if (!success) {
-            ErrorMessage("Output file writing error");
+            ErrorMessage(L"Output file writing error");
             error = ErrorType::OUTPUT_FILE_WRITING_ERROR;
         }
     }

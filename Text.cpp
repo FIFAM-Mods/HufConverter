@@ -1,4 +1,7 @@
 #include "Text.h"
+#include <list>
+#include <algorithm>
+#include "utils.h"
 
 CTextMultibyteStrings::~CTextMultibyteStrings() {
     Clear();

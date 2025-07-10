@@ -1,10 +1,7 @@
 #pragma once
-#include <stdio.h>
-#include <Windows.h>
-#include <algorithm>
-#include "utils.h"
+#include <string>
 #include <map>
-#include <list>
+#include <Windows.h>
 
 enum eGame {
     GAME_NOTSET,

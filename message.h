@@ -1,7 +1,5 @@
 #pragma once
 #include <string>
-#include "utils.h"
-#include <iostream>
 
 enum MessageDisplayType {
     MSG_MESSAGE_BOX,
@@ -12,5 +10,5 @@ enum MessageDisplayType {
 extern MessageDisplayType displayType;
 
 void SetMessageDisplayType(MessageDisplayType type);
-bool ErrorMessage(std::string const &msg);
-bool InfoMessage(std::string const &msg);
+bool ErrorMessage(std::wstring const &msg);
+bool InfoMessage(std::wstring const &msg);

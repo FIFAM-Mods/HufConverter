@@ -5,16 +5,13 @@
 
 std::wstring AtoW(std::string const &str);
 std::string WtoA(std::wstring const &str);
-std::string ToUpper(std::string const &str);
-std::string ToLower(std::string const &str);
 std::wstring ToUpper(std::wstring const &str);
 std::wstring ToLower(std::wstring const &str);
-void Replace(std::string &str, const std::string &from, const std::string &to);
-void Replace(std::wstring &str, const std::wstring &from, const std::wstring &to);
-void Trim(std::string &str);
 void Trim(std::wstring &str);
-std::vector<std::string> Split(std::string const &line, wchar_t delim, bool trim = true, bool skipEmpty = false, bool quotesHavePriority = true);
-std::vector<std::wstring> Split(std::wstring const &line, wchar_t delim, bool trim = true, bool skipEmpty = false, bool quotesHavePriority = true);
+unsigned int Hash(std::string const &str);
+std::string ToUTF8(std::wstring const &wstr);
+std::wstring ToUTF16(std::string const &str);
+bool IsNumber(const std::wstring &str);
 
 class FormattingUtils {
     static const unsigned int BUF_SIZE = 10;
@@ -91,35 +88,3 @@ bool Warning(std::wstring const &format, ArgTypes... args) {
     FormattingUtils::WindowsMessageBoxW(FormatStatic(format, args...), L"Warning", 1);
     return false;
 }
-
-unsigned int Hash(std::string const &str);
-
-template<typename T>
-T SafeConvertInt(std::wstring const &str, bool isHex = false) {
-    T result = 0;
-    try {
-        result = static_cast<T>(std::stoull(str, 0, isHex ? 16 : 10));
-    }
-    catch (...) {}
-    return result;
-}
-
-float SafeConvertFloat(std::wstring const &str);
-double SafeConvertDouble(std::wstring const &str);
-
-template<typename T>
-T SafeConvertInt(std::string const &str, bool isHex = false) {
-    T result = 0;
-    try {
-        result = static_cast<T>(std::stoull(str, 0, isHex ? 16 : 10));
-    }
-    catch (...) {}
-    return result;
-}
-
-float SafeConvertFloat(std::string const &str);
-double SafeConvertDouble(std::string const &str);
-
-std::string ToUTF8(std::wstring const &wstr);
-std::wstring ToUTF16(std::string const &str);
-bool IsNumber(const std::wstring &str);
