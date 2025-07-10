@@ -7,19 +7,19 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="commandline.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="message.cpp" />
-    <ClCompile Include="Text.cpp" />
-    <ClCompile Include="TextFileTable.cpp" />
-    <ClCompile Include="utils.cpp" />
+    <ClCompile Include="code\commandline.cpp" />
+    <ClCompile Include="code\main.cpp" />
+    <ClCompile Include="code\message.cpp" />
+    <ClCompile Include="code\Text.cpp" />
+    <ClCompile Include="code\TextFileTable.cpp" />
+    <ClCompile Include="code\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="commandline.h" />
-    <ClInclude Include="TextFileTable.h" />
-    <ClInclude Include="message.h" />
-    <ClInclude Include="Text.h" />
-    <ClInclude Include="utils.h" />
+    <ClInclude Include="code\commandline.h" />
+    <ClInclude Include="code\message.h" />
+    <ClInclude Include="code\Text.h" />
+    <ClInclude Include="code\TextFileTable.h" />
+    <ClInclude Include="code\utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
