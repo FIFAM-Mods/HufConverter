@@ -1,0 +1,1 @@
+pyinstaller --noconsole --onefile --icon=icon.ico --distpath ./output pythonGUI\HufConverterGUI.py
