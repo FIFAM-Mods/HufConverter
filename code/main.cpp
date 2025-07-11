@@ -6,7 +6,7 @@
 #include "xlsxwriter.h"
 #include "xlnt\xlnt.hpp"
 
-wchar_t const *version = L"1.000";
+wchar_t const *version = L"1.00";
 
 int wmain(int argc, wchar_t *argv[]) {
     enum ErrorType {
