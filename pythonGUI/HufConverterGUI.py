@@ -2,6 +2,7 @@ import sys
 import os
 import subprocess
 import platform
+import struct
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QLabel, QLineEdit, QPushButton, QComboBox, QStyle,
     QFileDialog, QCheckBox, QVBoxLayout, QHBoxLayout, QMessageBox, QGridLayout
@@ -15,7 +16,7 @@ class HufConverterGUI(QWidget):
         style = self.style()
         icon = style.standardIcon(QStyle.SP_FileDialogListView)
         self.setWindowIcon(icon)
-        self.setWindowTitle("HufConverterGUI")
+        self.setWindowTitle("HufConverterGUI 1.000 by Dmitri")
         self.setFixedSize(600, 300)
         self.init_ui()
 
@@ -89,18 +90,33 @@ class HufConverterGUI(QWidget):
         self.outputFileEdit.setFont(font)
         layout.addWidget(self.outputFileEdit, 4, 1, 1, 2)
 
-        # Match Key Names
+        # Row layout for checkboxes + language
+        rowLayout = QHBoxLayout()
+
+        # Match Keys
         self.matchKeysCheck = QCheckBox("Match Key Names")
         self.matchKeysCheck.setFont(font)
         self.matchKeysCheck.setChecked(True)
-        layout.addWidget(self.matchKeysCheck, 5, 0, 1, 2)
+        rowLayout.addWidget(self.matchKeysCheck)
 
         # Write Hashes
         self.hashesCheck = QCheckBox("Write Hashes")
         self.hashesCheck.setFont(font)
         self.hashesCheck.setChecked(False)
-        layout.addWidget(self.hashesCheck, 5, 1)
+        rowLayout.addWidget(self.hashesCheck)
 
+        # Language combobox
+        self.languageCombo = QComboBox()
+        self.languageCombo.setFont(font)
+        self.languageCombo.addItems(["English", "French", "German", "Italian", "Spanish", "Polish"])
+        self.languageLabel = QLabel("Language:")
+        self.languageLabel.setFont(font)
+        self.languageLabel.setFixedWidth(80)
+        rowLayout.addWidget(self.languageLabel)
+        rowLayout.addWidget(self.languageCombo)
+
+        layout.addLayout(rowLayout, 5, 0, 1, 3)
+        
         # Convert Button
         self.convertBtn = QPushButton("Convert")
         self.convertBtn.setFont(largeFont)
@@ -118,19 +134,71 @@ class HufConverterGUI(QWidget):
             self.inputFileEdit.setText(fileName)
 
     def detect_input_format(self):
-        path = self.inputFileEdit.text().lower()
+        path = self.inputFileEdit.text().strip().lower()
         ext_map = {
             ".huf": "Translation File (.HUF)",
             ".xlsx": "Excel Workbook (.XLSX)",
             ".txt": "Unicode Text (.TXT)",
-            ".csv": "Comma Separated (.CSV)",  # default to comma
+            ".csv": None,
             ".tsv": "Tab Separated (.TSV)",
             ".tr": "Custom Translation (.TR)"
         }
+
         for ext, name in ext_map.items():
             if path.endswith(ext):
-                self.inputFormatCombo.setCurrentText(name)
+                if ext == ".csv":
+                    sep = self._detect_csv_separator(self.inputFileEdit.text())
+                    if sep == ";":
+                        self.inputFormatCombo.setCurrentText("Semicolon Separated (.CSV)")
+                    else:
+                        self.inputFormatCombo.setCurrentText("Comma Separated (.CSV)")
+                else:
+                    self.inputFormatCombo.setCurrentText(name)
+
+                full_path = self.inputFileEdit.text()
+                if ext == ".huf" and os.path.isfile(full_path):
+                    try:
+                        if os.path.getsize(full_path) >= 12:
+                            with open(full_path, "rb") as f:
+                                header = f.read(12)
+                                if header[:4] == b"CLFB":
+                                    self.gameCombo.setCurrentText("FIFA Manager 09 - FIFA Manager 14")
+                                elif self.gameCombo.currentText() == "FIFA Manager 09 - FIFA Manager 14":
+                                    self.gameCombo.setCurrentText("FIFA Manager 06 - FIFA Manager 08")
+
+                                import struct
+                                lang_id = struct.unpack("<I", header[8:12])[0]
+                                if 1 <= lang_id <= 6:
+                                    self.languageCombo.setCurrentIndex(lang_id - 1)
+                    except Exception:
+                        pass
                 break
+
+    def _detect_csv_separator(self, filepath):
+        try:
+            with open(filepath, "r", encoding="utf-8-sig") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    comma_count = 0
+                    semicolon_count = 0
+                    in_quotes = False
+                    for ch in line:
+                        if ch == '"':
+                            in_quotes = not in_quotes
+                        elif not in_quotes:
+                            if ch == ',':
+                                comma_count += 1
+                            elif ch == ';':
+                                semicolon_count += 1
+                    if semicolon_count > comma_count:
+                        return ";"
+                    else:
+                        return ","
+        except Exception:
+            return ","
+
 
     def update_output_format(self):
         input_text = self.inputFormatCombo.currentText()
@@ -205,7 +273,7 @@ class HufConverterGUI(QWidget):
         elif game == "FIFA Manager 06 - FIFA Manager 08":
             args += ["-game", "fm06"]
 
-        if ";" in input_fmt or ";" in output_fmt:
+        if "Semicolon" in input_fmt or "Semicolon" in output_fmt:
             args += ["-separator", ";"]
 
         if not self.matchKeysCheck.isChecked():
@@ -213,6 +281,19 @@ class HufConverterGUI(QWidget):
 
         if self.hashesCheck.isChecked():
             args += ["-hashes"]
+            
+        language_id = self.languageCombo.currentIndex() + 1
+        args += ["-language", str(language_id)]
+
+        args_file = os.path.join(base_dir, "arguments.txt")
+        if os.path.isfile(args_file):
+            try:
+                with open(args_file, "r", encoding="utf-8") as f:
+                    first_line = f.readline().strip()
+                    if first_line:
+                        args += first_line.split()
+            except Exception:
+                pass
 
         self.setDisabled(True)
         QApplication.processEvents()

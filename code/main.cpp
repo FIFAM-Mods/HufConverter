@@ -6,6 +6,8 @@
 #include "xlsxwriter.h"
 #include "xlnt\xlnt.hpp"
 
+wchar_t const *version = L"1.000";
+
 int wmain(int argc, wchar_t *argv[]) {
     enum ErrorType {
         NONE = 0,
@@ -36,7 +38,7 @@ int wmain(int argc, wchar_t *argv[]) {
     };
     CommandLine cmd(argc, argv, { L"game", L"g", L"input", L"i", L"output", L"o", L"keys", L"k",
         L"locale", L"language", L"l", L"separator", L"s" },
-        { L"silent", L"hashes" } );
+        { L"silent", L"hashes", L"stats" } );
     SetMessageDisplayType(cmd.HasOption(L"silent") ? MessageDisplayType::MSG_CONSOLE : MessageDisplayType::MSG_MESSAGE_BOX);
     std::pair<eFileType, eFileType> format = { FILETYPE_NOTSET, FILETYPE_NOTSET };
     if (argc >= 2) {
@@ -71,6 +73,7 @@ int wmain(int argc, wchar_t *argv[]) {
     unsigned int localeID = 1;
     wchar_t separator = 0;
     bool hashes = (format.second != FILETYPE_TR) ? cmd.HasOption(L"hashes") : false;
+    bool stats = cmd.HasOption(L"stats");
     for (auto const &[arg, value] : cmd.mArguments) {
         if (arg == L"game" || arg == L"g") {
             std::wstring gameStr = ToLower(value);
@@ -183,7 +186,7 @@ int wmain(int argc, wchar_t *argv[]) {
         }
         else {
             TextFileTable textFile;
-            success = textFile.Read(in, fileType[format.first].separator);
+            success = textFile.Read(in, separator == 0 ? fileType[format.first].separator : separator);
             if (success) {
                 for (auto const &row : textFile.Rows()) {
                     if (row.size() >= 2)
@@ -192,14 +195,8 @@ int wmain(int argc, wchar_t *argv[]) {
             }
             textFile.Clear();
         }
-        if (success) {
-            TextFileTable testTable;
-            for (auto const &[key, value] : strings)
-                testTable.AddRow({ std::to_wstring(key), value });
-            testTable.Write("test_table.txt", L'\t', ENCODING_UTF16LE_BOM);
-
+        if (success)
             success = text.LoadTranslationStrings(strings, game);
-        }
     }
 
     ErrorType error = ErrorType::NONE;
@@ -304,8 +301,6 @@ int wmain(int argc, wchar_t *argv[]) {
             if (success) {
                 if (text.m_pStringHashes && text.m_nNumStringHashes != 0) {
                     unsigned int totalNamed = 0;
-                    if (separator == 0)
-                        separator = fileType[format.second].separator;
                     for (unsigned int i = 0; i < text.m_nNumStringHashes; ++i) {
                         const CStringHash &entry = text.m_pStringHashes[i];
                         const wchar_t *value = text.GetByHashKey(entry.key);
@@ -333,12 +328,16 @@ int wmain(int argc, wchar_t *argv[]) {
                                 textFile->AddRow({ key, value });
                         }
                     }
+                    if (stats) {
+                        ::Message(Format(L"Total named: %d/%d (%.2f%%)", totalNamed, text.m_nNumStringHashes,
+                            (float)totalNamed / (float)text.m_nNumStringHashes * 100.0f));
+                    }
                 }
             }
             if (excelFile)
                 workbook_close(excelFile);
             if (textFile) {
-                success = textFile->Write(out, separator, fileType[format.second].encoding);
+                success = textFile->Write(out, separator == 0 ? fileType[format.second].separator : separator, fileType[format.second].encoding);
                 delete textFile;
             }
         }

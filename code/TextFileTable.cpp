@@ -122,7 +122,7 @@ bool TextFileTable::Read(std::filesystem::path const &filename, wchar_t separato
             return false;
         }
         fseek(file, 0, SEEK_SET);
-        enum class encoding { ascii, utf8, utf16le, utf16be } enc = encoding::ascii;
+        eEncoding enc = ENCODING_UTF8;
         long numBytesToSkip = 0;
         if (fileSizeWithBom >= 2) {
             unsigned char bom[3];
@@ -130,11 +130,11 @@ bool TextFileTable::Read(std::filesystem::path const &filename, wchar_t separato
             fread(&bom, 1, 2, file);
             fseek(file, 0, SEEK_SET);
             if (bom[0] == 0xFE && bom[1] == 0xFF) {
-                enc = encoding::utf16be;
+                enc = ENCODING_UTF16BE_BOM;
                 numBytesToSkip = 2;
             }
             else if (bom[0] == 0xFF && bom[1] == 0xFE) {
-                enc = encoding::utf16le;
+                enc = ENCODING_UTF16LE_BOM;
                 numBytesToSkip = 2;
             }
             else if (fileSizeWithBom >= 3) {
@@ -142,7 +142,7 @@ bool TextFileTable::Read(std::filesystem::path const &filename, wchar_t separato
                 fread(&bom, 1, 3, file);
                 fseek(file, 0, SEEK_SET);
                 if (bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF) {
-                    enc = encoding::utf8;
+                    enc = ENCODING_UTF8_BOM;
                     numBytesToSkip = 3;
                 }
             }
@@ -158,14 +158,15 @@ bool TextFileTable::Read(std::filesystem::path const &filename, wchar_t separato
         }
         long numWideChars = 0;
         switch (enc) {
-        case encoding::ascii:
+        case ENCODING_ANSI:
             numWideChars = totalSize;
             break;
-        case encoding::utf8:
+        case ENCODING_UTF8:
+        case ENCODING_UTF8_BOM:
             numWideChars = MultiByteToWideChar(CP_UTF8, 0, fileData, totalSize, 0, 0);
             break;
-        case encoding::utf16le:
-        case encoding::utf16be:
+        case ENCODING_UTF16LE_BOM:
+        case ENCODING_UTF16BE_BOM:
             numWideChars = totalSize / 2;
             break;
         }
@@ -177,20 +178,21 @@ bool TextFileTable::Read(std::filesystem::path const &filename, wchar_t separato
         memset(data, 0, numWideChars * sizeof(wchar_t));
 
         switch (enc) {
-        case encoding::ascii:
+        case ENCODING_ANSI:
             MultiByteToWideChar(1252, 0, fileData, totalSize, data, numWideChars);
             break;
-        case encoding::utf8:
+        case ENCODING_UTF8:
+        case ENCODING_UTF8_BOM:
             MultiByteToWideChar(CP_UTF8, 0, fileData, totalSize, data, numWideChars);
             break;
-        case encoding::utf16le:
-        case encoding::utf16be:
+        case ENCODING_UTF16LE_BOM:
+        case ENCODING_UTF16BE_BOM:
             memcpy(data, fileData, totalSize);
             break;
         }
         delete[] fileData;
 
-        if (enc == encoding::utf16be) {
+        if (enc == ENCODING_UTF16BE_BOM) {
             for (long i = 0; i < numWideChars; i++)
                 data[i] = (data[i] >> 8) | (data[i] << 8);
         }
@@ -264,38 +266,50 @@ bool TextFileTable::Write(std::filesystem::path const &filename, wchar_t separat
         if (!std::filesystem::create_directories(parentPath, ec))
             return false;
     }
-    bool unicode = encoding != ENCODING_ASCII;
-    FILE *mFile = _wfopen(filename.c_str(), unicode ? L"wb" : L"wt");
+    std::wstring output;
+    size_t numRowsToWrite = NumRowsToWrite();
+    size_t numColumnsToWrite = MaxColumns();
+    if (numColumnsToWrite > 0) {
+        for (size_t r = 0; r < numRowsToWrite; r++) {
+            for (size_t c = 0; c < numColumnsToWrite; c++) {
+                if (c != 0)
+                    output += separator;
+                output += Quoted(Cell(c, r), separator);
+            }
+            output += L"\r\n";
+        }
+    }
+    else
+        output += L"\r\n";
+    
+    FILE *mFile = _wfopen(filename.c_str(), L"wb");
     if (!mFile)
         return false;
-    if (unicode) {
-        if (encoding == ENCODING_UTF16LE_BOM) {
-            unsigned char bom[2] = { 0xFF, 0xFE };
-            fwrite(bom, 2, 1, mFile);
-        }
-        else {
+    if (encoding == ENCODING_ANSI || encoding == ENCODING_UTF8 || encoding == ENCODING_UTF8_BOM) {
+        if (encoding == ENCODING_UTF8_BOM) {
             unsigned char bom[3] = { 0xEF, 0xBB, 0xBF };
             fwrite(bom, 3, 1, mFile);
         }
-        fclose(mFile);
-        mFile = _wfopen(filename.c_str(), L"a");
-        if (!mFile)
-            return false;
-        _setmode(_fileno(mFile), encoding == ENCODING_UTF16LE_BOM ? _O_U16TEXT : _O_U8TEXT);
-        size_t numRowsToWrite = NumRowsToWrite();
-        size_t numColumnsToWrite = MaxColumns();
-        if (numColumnsToWrite > 0) {
-            for (size_t r = 0; r < numRowsToWrite; r++) {
-                for (size_t c = 0; c < numColumnsToWrite; c++) {
-                    if (c != 0)
-                        fputwc(separator, mFile);
-                    fputws(Quoted(Cell(c, r), separator).c_str(), mFile);
-                }
-                fputwc(L'\n', mFile);
-            }
+        unsigned int codePage = (encoding == ENCODING_ANSI) ? 1252 : CP_UTF8;
+        int size_needed = WideCharToMultiByte(codePage, 0, &output[0], (int)output.size(), NULL, 0, NULL, NULL);
+        std::string encoded(size_needed, 0);
+        WideCharToMultiByte(codePage, 0, &output[0], (int)output.size(), &encoded[0], size_needed, NULL, NULL);
+        fwrite(encoded.data(), 1, encoded.size(), mFile);
+    }
+    else if (encoding == ENCODING_UTF16LE_BOM || encoding == ENCODING_UTF16BE_BOM) {
+        unsigned char bom[2] = { 0xFF, 0xFE };
+        if (encoding == ENCODING_UTF16BE_BOM) {
+            std::swap(bom[0], bom[1]);
+            std::vector<wchar_t> swapped(output.size());
+            for (size_t i = 0; i < output.size(); i++)
+                swapped[i] = (output[i] >> 8) | (output[i] << 8);
+            fwrite(bom, 2, 1, mFile);
+            fwrite(swapped.data(), 2, swapped.size(), mFile);
         }
-        else
-            fputwc(L'\n', mFile);
+        else {
+            fwrite(bom, 2, 1, mFile);
+            fwrite(output.data(), 2, output.size(), mFile);
+        }
     }
     fclose(mFile);
     return true;

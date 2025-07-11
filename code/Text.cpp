@@ -45,10 +45,18 @@ bool CTextMultibyteStrings::Write(HANDLE fileHandle) const {
     DWORD written = 0;
     unsigned int magic = 'MBST';
     unsigned int byteSize = (m_bitOffset / 8) + 1;
-    return WriteFile(fileHandle, &magic, 4, &written, nullptr) &&
+    if (WriteFile(fileHandle, &magic, 4, &written, nullptr) &&
         WriteFile(fileHandle, &m_bitOffset, 4, &written, nullptr) &&
-        WriteFile(fileHandle, &byteSize, 4, &written, nullptr) &&
-        WriteFile(fileHandle, m_pData, byteSize, &written, nullptr);
+        WriteFile(fileHandle, &byteSize, 4, &written, nullptr))
+    {
+        if (m_bitOffset == 0) {
+            unsigned char data = 0;
+            return WriteFile(fileHandle, &data, 1, &written, nullptr);
+        }
+        else
+            return WriteFile(fileHandle, m_pData, byteSize, &written, nullptr);
+    }
+    return false;
 }
 
 unsigned char CTextMultibyteStrings::GetBitAt(unsigned int offset) const {
@@ -438,10 +446,14 @@ bool CText::WriteTranslationsFile(wchar_t const *filePath) {
             if (WriteFile(file, huffChunks, NodeArraySize * 12, &written, nullptr) &&
                 WriteFile(file, &MbStringsSizeInBits, 4, &written, nullptr) &&
                 WriteFile(file, &m_mbStrings.m_bitOffset, 4, &written, nullptr) &&
-                WriteFile(file, &m_mbStrings.m_nRuntimeDataPtr, 4, &written, nullptr) &&
-                WriteFile(file, m_mbStrings.m_pData, byteSize, &written, nullptr))
+                WriteFile(file, &m_mbStrings.m_nRuntimeDataPtr, 4, &written, nullptr))
             {
-                success = true;
+                if (m_mbStrings.m_bitOffset == 0) {
+                    unsigned char data = 0;
+                    success = WriteFile(file, &data, 1, &written, nullptr);
+                }
+                else
+                    success = WriteFile(file, m_mbStrings.m_pData, byteSize, &written, nullptr);
             }
             delete[] huffChunks;
         }

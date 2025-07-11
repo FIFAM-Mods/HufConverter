@@ -4,9 +4,11 @@
 #include <filesystem>
 
 enum eEncoding {
-    ENCODING_ASCII,
+    ENCODING_ANSI,
+    ENCODING_UTF8,
     ENCODING_UTF8_BOM,
-    ENCODING_UTF16LE_BOM
+    ENCODING_UTF16LE_BOM,
+    ENCODING_UTF16BE_BOM
 };
 
 class TextFileTable {
