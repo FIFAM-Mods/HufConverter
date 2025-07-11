@@ -36,7 +36,7 @@ int wmain(int argc, wchar_t *argv[]) {
     };
     CommandLine cmd(argc, argv, { L"game", L"g", L"input", L"i", L"output", L"o", L"keys", L"k",
         L"locale", L"language", L"l", L"separator", L"s" },
-        { L"silent"} );
+        { L"silent", L"hashes" } );
     SetMessageDisplayType(cmd.HasOption(L"silent") ? MessageDisplayType::MSG_CONSOLE : MessageDisplayType::MSG_MESSAGE_BOX);
     std::pair<eFileType, eFileType> format = { FILETYPE_NOTSET, FILETYPE_NOTSET };
     if (argc >= 2) {
@@ -70,6 +70,7 @@ int wmain(int argc, wchar_t *argv[]) {
     eGame game = GAME_FM09;
     unsigned int localeID = 1;
     wchar_t separator = 0;
+    bool hashes = (format.second != FILETYPE_TR) ? cmd.HasOption(L"hashes") : false;
     for (auto const &[arg, value] : cmd.mArguments) {
         if (arg == L"game" || arg == L"g") {
             std::wstring gameStr = ToLower(value);
@@ -100,7 +101,7 @@ int wmain(int argc, wchar_t *argv[]) {
         }
         else if (arg == L"output" || arg == L"o") {
             out = value;
-            if (out.has_parent_path()) {
+            if (out.has_parent_path() && !exists(out.parent_path())) {
                 std::error_code ec;
                 if (!std::filesystem::create_directories(out.parent_path(), ec)) {
                     ErrorMessage(L"Unable to create output folder");
@@ -277,16 +278,20 @@ int wmain(int argc, wchar_t *argv[]) {
                         if (textFormat) {
                             format_set_num_format(textFormat, "@");
                             worksheet_set_column(excelSheet, 0, 0, 50, textFormat);
-                            worksheet_set_column(excelSheet, 1, 1, 160, textFormat);
+                            worksheet_set_column(excelSheet, 1, 1, hashes ? 155 : 160, textFormat);
+                            if (hashes)
+                                worksheet_set_column(excelSheet, 2, 2, 12, NULL);
                             lxw_table_column col1 = { .header = "Key" };
                             lxw_table_column col2 = { .header = "Text" };
-                            lxw_table_column *columns[] = { &col1, &col2, NULL };
+                            lxw_table_column col3 = { .header = "Hash" };
+                            lxw_table_column *columns2[] = { &col1, &col2, NULL };
+                            lxw_table_column *columns3[] = { &col1, &col2, &col3, NULL };
                             lxw_table_options options = {
                                 .style_type = LXW_TABLE_STYLE_TYPE_LIGHT,
                                 .style_type_number = 1,
-                                .columns = columns,
+                                .columns = hashes ? columns3 : columns2,
                             };
-                            worksheet_add_table(excelSheet, 0, 0, text.m_nNumStringHashes, 1, &options);
+                            worksheet_add_table(excelSheet, 0, 0, text.m_nNumStringHashes, hashes ? 2 : 1, &options);
                             success = true;
                         }
                     }
@@ -318,9 +323,15 @@ int wmain(int argc, wchar_t *argv[]) {
                         if (excelFile) {
                             worksheet_write_string(excelSheet, i + 1, 0, ToUTF8(key).c_str(), NULL);
                             worksheet_write_string(excelSheet, i + 1, 1, ToUTF8(value).c_str(), NULL);
+                            if (hashes)
+                                worksheet_write_number(excelSheet, i + 1, 2, entry.key, NULL);
                         }
-                        else if (textFile)
-                            textFile->AddRow({ key, value });
+                        else if (textFile) {
+                            if (hashes)
+                                textFile->AddRow({ key, value, std::to_wstring(entry.key) });
+                            else
+                                textFile->AddRow({ key, value });
+                        }
                     }
                 }
             }

@@ -11,10 +11,10 @@ enum eGame {
 };
 
 struct CharacterInfo {
-    unsigned int codeBits;
-    wchar_t character;
-    unsigned char codeLength;
-    char _pad7;
+    unsigned int codeBits = 0;
+    wchar_t character = 0;
+    unsigned char codeLength = 0;
+    char _pad7 = 0;
 };
 
 class CTextMultibyteStrings {

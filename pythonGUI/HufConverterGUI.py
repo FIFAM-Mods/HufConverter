@@ -1,6 +1,7 @@
 import sys
 import os
 import subprocess
+import platform
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QLabel, QLineEdit, QPushButton, QComboBox, QStyle,
     QFileDialog, QCheckBox, QVBoxLayout, QHBoxLayout, QMessageBox, QGridLayout
@@ -92,7 +93,13 @@ class HufConverterGUI(QWidget):
         self.matchKeysCheck = QCheckBox("Match Key Names")
         self.matchKeysCheck.setFont(font)
         self.matchKeysCheck.setChecked(True)
-        layout.addWidget(self.matchKeysCheck, 5, 0, 1, 3)
+        layout.addWidget(self.matchKeysCheck, 5, 0, 1, 2)
+
+        # Write Hashes
+        self.hashesCheck = QCheckBox("Write Hashes")
+        self.hashesCheck.setFont(font)
+        self.hashesCheck.setChecked(False)
+        layout.addWidget(self.hashesCheck, 5, 1)
 
         # Convert Button
         self.convertBtn = QPushButton("Convert")
@@ -158,7 +165,8 @@ class HufConverterGUI(QWidget):
                 QMessageBox.critical(self, "Error", "Output directory does not exist.")
                 return
 
-        exe_path = os.path.join(os.path.dirname(__file__), "HufConverter.exe")
+        base_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__)
+        exe_path = os.path.join(base_dir, "HufConverter.exe")
         if not os.path.isfile(exe_path):
             QMessageBox.critical(self, "Error", "HufConverter.exe not found.")
             return
@@ -203,9 +211,24 @@ class HufConverterGUI(QWidget):
         if not self.matchKeysCheck.isChecked():
             args += ["-keys", "none"]
 
+        if self.hashesCheck.isChecked():
+            args += ["-hashes"]
+
         self.setDisabled(True)
+        QApplication.processEvents()
         try:
-            result = subprocess.run(args, check=False)
+            if platform.system() == "Windows":
+                si = subprocess.STARTUPINFO()
+                si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                result = subprocess.run(
+                    args,
+                    check=False,
+                    startupinfo=si,
+                    creationflags=subprocess.CREATE_NO_WINDOW
+                )
+            else:
+                result = subprocess.run(args, check=False)
+        
             if result.returncode == 0:
                 QMessageBox.information(self, "Success", "Conversion completed successfully.")
             else:

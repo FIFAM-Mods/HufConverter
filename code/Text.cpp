@@ -2,6 +2,7 @@
 #include <list>
 #include <algorithm>
 #include "utils.h"
+#include "message.h"
 
 CTextMultibyteStrings::~CTextMultibyteStrings() {
     Clear();
@@ -432,14 +433,13 @@ bool CText::WriteTranslationsFile(wchar_t const *filePath) {
             CHuffChunk *huffChunks = new CHuffChunk[NodeArraySize];
             memset(huffChunks, 0, NodeArraySize * 12);
             memcpy(huffChunks, m_huffmanInfo.m_pHuffChunks, m_huffmanInfo.m_nNumHuffmanChunks * 12);
-            for (unsigned int i = 0; i < m_huffmanInfo.m_nNumHuffmanChunks; i++)
-                huffChunks[i].character |= 0xFF00;
-            unsigned int MbStringsSizeInBits = m_mbStrings.m_nTotalLength - ((m_game == GAME_TCM2005) ? 0xC10 : 0x1810);
+            unsigned int MbStringsSizeInBits = (m_mbStrings.m_nTotalLength - ((m_game == GAME_TCM2005) ? 0xC10 : 0x1810)) * 8;
+            unsigned int byteSize = (m_mbStrings.m_bitOffset / 8) + 1;
             if (WriteFile(file, huffChunks, NodeArraySize * 12, &written, nullptr) &&
                 WriteFile(file, &MbStringsSizeInBits, 4, &written, nullptr) &&
                 WriteFile(file, &m_mbStrings.m_bitOffset, 4, &written, nullptr) &&
                 WriteFile(file, &m_mbStrings.m_nRuntimeDataPtr, 4, &written, nullptr) &&
-                WriteFile(file, m_mbStrings.m_pData, m_mbStrings.m_nDataSize, &written, nullptr))
+                WriteFile(file, m_mbStrings.m_pData, byteSize, &written, nullptr))
             {
                 success = true;
             }
@@ -532,6 +532,8 @@ bool CText::LoadTranslationStrings(std::map<unsigned int, std::wstring> const &s
     if (m_game != GAME_FM09) {
         unsigned int NodeArraySize = (m_game == GAME_TCM2005) ? 256 : 512;
         if (m_huffmanInfo.m_nNumHuffmanChunks > NodeArraySize) {
+            ErrorMessage(Format(L"Reached Huffman Nodes array limit: %d nodes are generated (%d max)",
+                m_huffmanInfo.m_nNumHuffmanChunks, NodeArraySize));
             Clear();
             return false;
         }
