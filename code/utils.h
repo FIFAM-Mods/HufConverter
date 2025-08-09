@@ -12,6 +12,7 @@ unsigned int Hash(std::string const &str);
 std::string ToUTF8(std::wstring const &wstr);
 std::wstring ToUTF16(std::string const &str);
 bool IsNumber(const std::wstring &str);
+std::wstring ReplaceAll(std::wstring const &input, std::vector<std::pair<std::wstring, std::wstring>> const &replacements);
 
 class FormattingUtils {
     static const unsigned int BUF_SIZE = 10;

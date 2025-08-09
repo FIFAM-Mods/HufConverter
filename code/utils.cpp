@@ -87,6 +87,32 @@ bool IsNumber(const std::wstring &str) {
     return true;
 }
 
+std::wstring ReplaceAll(std::wstring const &input, std::vector<std::pair<std::wstring, std::wstring>> const &replacements) {
+    if (replacements.empty())
+        return input;
+    std::wstring output;
+    output.reserve(input.size());
+    size_t pos = 0;
+    while (pos < input.size()) {
+        bool matched = false;
+        for (auto const &[key, value] : replacements) {
+            if (!key.empty() &&
+                pos + key.size() <= input.size() &&
+                input.compare(pos, key.size(), key) == 0) {
+                output.append(value);
+                pos += key.size();
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            output.push_back(input[pos]);
+            ++pos;
+        }
+    }
+    return output;
+}
+
 UINT MessageIcon(unsigned int iconType) {
     if (iconType == 1)
         return MB_ICONWARNING;

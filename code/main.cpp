@@ -6,7 +6,7 @@
 #include "xlsxwriter.h"
 #include "xlnt\xlnt.hpp"
 
-wchar_t const *version = L"1.00";
+wchar_t const *version = L"1.01";
 
 int wmain(int argc, wchar_t *argv[]) {
     enum ErrorType {
@@ -35,6 +35,23 @@ int wmain(int argc, wchar_t *argv[]) {
         { L',', L".csv", ENCODING_UTF8_BOM },
         { L'\t', L".tsv", ENCODING_UTF8_BOM },
         { L'|', L".tr", ENCODING_UTF8_BOM },
+    };
+    static std::vector<std::pair<std::wstring, std::wstring>> TokensToSymbols = {
+        {L"{HS}",   L" "},
+        {L"{BR}",   L"\r\n"},
+        {L"{PIPE}", L"|"},
+        {L"{TAB}",  L"\t"},
+        {L"{{}",    L"{"},
+        {L"{}}",    L"}"}
+    };
+    static std::vector<std::pair<std::wstring, std::wstring>> SymbolsToTokens = {
+        {L"\r\n", L"{BR}"},
+        {L"\r",   L"{BR}"},
+        {L"\n",   L"{BR}"},
+        {L"|",    L"{PIPE}"},
+        {L"\t",   L"{TAB}"},
+        {L"{",    L"{{}"},
+        {L"}",    L"{}}"}
     };
     CommandLine cmd(argc, argv, { L"game", L"g", L"input", L"i", L"output", L"o", L"keys", L"k",
         L"locale", L"language", L"l", L"separator", L"s" },
@@ -186,11 +203,12 @@ int wmain(int argc, wchar_t *argv[]) {
         }
         else {
             TextFileTable textFile;
-            success = textFile.Read(in, separator == 0 ? fileType[format.first].separator : separator);
+            auto sep = (separator == 0) ? fileType[format.first].separator : separator;
+            success = textFile.Read(in, sep);
             if (success) {
                 for (auto const &row : textFile.Rows()) {
                     if (row.size() >= 2)
-                        AddKeyAndValue(row[0], row[1]);
+                        AddKeyAndValue(row[0], (sep == L'|') ? ReplaceAll(row[1], TokensToSymbols) : row[1]);
                 }
             }
             textFile.Clear();
@@ -298,6 +316,7 @@ int wmain(int argc, wchar_t *argv[]) {
                 textFile = new TextFileTable;
                 success = textFile != nullptr;
             }
+            auto sep = (separator == 0) ? fileType[format.second].separator : separator;
             if (success) {
                 if (text.m_pStringHashes && text.m_nNumStringHashes != 0) {
                     unsigned int totalNamed = 0;
@@ -323,9 +342,9 @@ int wmain(int argc, wchar_t *argv[]) {
                         }
                         else if (textFile) {
                             if (hashes)
-                                textFile->AddRow({ key, value, std::to_wstring(entry.key) });
+                                textFile->AddRow({ key, (sep == L'|') ? ReplaceAll(value, SymbolsToTokens) : value, std::to_wstring(entry.key) });
                             else
-                                textFile->AddRow({ key, value });
+                                textFile->AddRow({ key, (sep == L'|') ? ReplaceAll(value, SymbolsToTokens) : value });
                         }
                     }
                     if (stats) {
@@ -337,7 +356,7 @@ int wmain(int argc, wchar_t *argv[]) {
             if (excelFile)
                 workbook_close(excelFile);
             if (textFile) {
-                success = textFile->Write(out, separator == 0 ? fileType[format.second].separator : separator, fileType[format.second].encoding);
+                success = textFile->Write(out, sep, fileType[format.second].encoding);
                 delete textFile;
             }
         }

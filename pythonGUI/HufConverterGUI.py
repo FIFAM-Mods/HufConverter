@@ -16,7 +16,7 @@ class HufConverterGUI(QWidget):
         style = self.style()
         icon = style.standardIcon(QStyle.SP_FileDialogListView)
         self.setWindowIcon(icon)
-        self.setWindowTitle("HufConverterGUI by Dmitri (1.00)")
+        self.setWindowTitle("HufConverterGUI by Dmitri (1.01)")
         self.setFixedSize(600, 300)
         self.init_ui()
 
