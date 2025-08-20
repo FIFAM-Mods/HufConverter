@@ -83,6 +83,7 @@ public:
     unsigned int m_nNumStringHashes = 0;
     wchar_t *m_pTempStrings[32] = {};
     unsigned int m_nTempStringsCounter = 0;
+    static unsigned int m_characterMap[65536];
 
     ~CText();
     static unsigned int GetHash(const char *str);

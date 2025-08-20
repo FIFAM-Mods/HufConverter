@@ -6,7 +6,7 @@
 #include "xlsxwriter.h"
 #include "xlnt\xlnt.hpp"
 
-wchar_t const *version = L"1.01";
+wchar_t const *version = L"1.02";
 
 int wmain(int argc, wchar_t *argv[]) {
     enum ErrorType {
@@ -54,8 +54,8 @@ int wmain(int argc, wchar_t *argv[]) {
         {L"}",    L"{}}"}
     };
     CommandLine cmd(argc, argv, { L"game", L"g", L"input", L"i", L"output", L"o", L"keys", L"k",
-        L"locale", L"language", L"l", L"separator", L"s" },
-        { L"silent", L"hashes", L"stats" } );
+        L"locale", L"language", L"l", L"separator", L"s", L"charmap" },
+        { L"silent", L"hashes", L"stats", L"windows1251" } );
     SetMessageDisplayType(cmd.HasOption(L"silent") ? MessageDisplayType::MSG_CONSOLE : MessageDisplayType::MSG_MESSAGE_BOX);
     std::pair<eFileType, eFileType> format = { FILETYPE_NOTSET, FILETYPE_NOTSET };
     if (argc >= 2) {
@@ -91,6 +91,15 @@ int wmain(int argc, wchar_t *argv[]) {
     wchar_t separator = 0;
     bool hashes = (format.second != FILETYPE_TR) ? cmd.HasOption(L"hashes") : false;
     bool stats = cmd.HasOption(L"stats");
+    bool windows1251 = cmd.HasOption(L"windows1251");
+    std::map<wchar_t, wchar_t> charmap;
+    auto ApplyCharmap = [&charmap](std::wstring &str) {
+        for (auto &c : str) {
+            auto it = charmap.find(c);
+            if (it != charmap.end())
+                c = (*it).second;
+        }
+    };
     for (auto const &[arg, value] : cmd.mArguments) {
         if (arg == L"game" || arg == L"g") {
             std::wstring gameStr = ToLower(value);
@@ -149,6 +158,16 @@ int wmain(int argc, wchar_t *argv[]) {
                 localeID = std::stoi(value);
             }
             catch (...) {}
+        }
+        else if (arg == L"charmap") {
+            TextFileTable chm;
+            chm.Read(value, L'\t');
+            for (unsigned int r = 0; r < chm.NumRows(); r++) {
+                auto from = chm.Cell(0, r);
+                auto to = chm.Cell(1, r);
+                if (from.size() == 1 && to.size() == 1)
+                    charmap[from[0]] = to[0];
+            }
         }
     }
     if (in.empty()) {
@@ -213,8 +232,42 @@ int wmain(int argc, wchar_t *argv[]) {
             }
             textFile.Clear();
         }
-        if (success)
+        if (success) {
+            if (!charmap.empty()) {
+                for (auto &[k, v] : strings)
+                    ApplyCharmap(v);
+            }
+            if (windows1251) {
+                for (auto &[k, v] : strings)
+                    ConvertUTF16ToWindows1251(v);
+            }
             success = text.LoadTranslationStrings(strings, game);
+            if (stats) {
+                unsigned int numUniqueCharacters = 0;
+                for (unsigned int c = 0; c < 65536; c++) {
+                    if (text.m_characterMap[c])
+                        numUniqueCharacters++;
+                }
+                ::Message(Format(L"Number of unique characters: %d", numUniqueCharacters));
+                TextFileTable uniqueChars;
+                for (unsigned int c = 0; c < std::size(text.m_characterMap); c++) {
+                    if (text.m_characterMap[c] > 0) {
+                        // 0xFFFF 'A' 123
+                        std::wstring character(1, (wchar_t)c);
+                        if (c < 32)
+                            character = Format(L"\\x%X", c);
+                        else if (windows1251) {
+                            std::string mbStr = WtoA(character);
+                            int size_needed = MultiByteToWideChar(1251, 0, &mbStr[0], (int)mbStr.size(), NULL, 0);
+                            character.resize(size_needed, 0);
+                            MultiByteToWideChar(1251, 0, &mbStr[0], (int)mbStr.size(), &character[0], size_needed);
+                        }
+                        uniqueChars.AddRow({ Format(L"0x%X", c), character, std::to_wstring(text.m_characterMap[c]) });
+                    }
+                }
+                uniqueChars.Write(L"UniqueChars.txt", L'\t', ENCODING_UTF16LE_BOM);
+            }
+        }
     }
 
     ErrorType error = ErrorType::NONE;
@@ -248,37 +301,46 @@ int wmain(int argc, wchar_t *argv[]) {
                     if (textHashes.contains(hash) && !keys.contains(hash))
                         keys[hash] = keyName;
                 };
-                for (unsigned int i = 0; i <= 3500; i++) {
-                    AddTranslationKey(Format(L"IDS_EA_MAIL_TITLE_%d", i));
-                    for (unsigned int v = 0; v < 10; v++)
-                        AddTranslationKey(Format(L"IDS_EA_MAIL_TITLE_VAR_%d_%d", v, i));
-                    AddTranslationKey(Format(L"IDS_EA_MAIL_TEXT_%d", i));
-                    for (unsigned int v = 0; v < 10; v++)
-                        AddTranslationKey(Format(L"IDS_EA_MAIL_TEXT_VAR_%d_%d", v, i));
-                    AddTranslationKey(Format(L"IDS_EA_MAIL_REMARK_%d", i));
-                    for (unsigned int v = 0; v < 3; v++)
-                        AddTranslationKey(Format(L"IDS_EA_MAIL_ALT_%d_%d", v, i));
-                    for (unsigned int v = 0; v < 3; v++)
-                        AddTranslationKey(Format(L"IDS_EA_MAIL_ANSWER_%d_%d", v, i));
+                if (game == GAME_TCM2005 || game == GAME_FM06) {
+                    for (unsigned int i = 0; i <= 20000; i++)
+                        AddTranslationKey(Format(L"TM_STR_%d", i));
                 }
-                AddTranslationKey(Format(L"IDS_CITYDESC_%08X", 0));
-                for (unsigned int countryId = 1; countryId <= 207; countryId++) {
-                    for (unsigned int clubIndex = 1; clubIndex <= 0x2100; clubIndex++)
-                        AddTranslationKey(Format(L"IDS_CITYDESC_%08X", (countryId << 16) | clubIndex));
-                    AddTranslationKey(Format(L"IDS_CITYDESC_%08X", (countryId << 16) | 0xFFFF));
+                if (game == GAME_FM06 || game == GAME_FM09) {
+                    for (unsigned int i = 0; i <= 3500; i++) {
+                        AddTranslationKey(Format(L"IDS_EA_MAIL_TITLE_%d", i));
+                        for (unsigned int v = 0; v < 10; v++)
+                            AddTranslationKey(Format(L"IDS_EA_MAIL_TITLE_VAR_%d_%d", v, i));
+                        AddTranslationKey(Format(L"IDS_EA_MAIL_TEXT_%d", i));
+                        for (unsigned int v = 0; v < 10; v++)
+                            AddTranslationKey(Format(L"IDS_EA_MAIL_TEXT_VAR_%d_%d", v, i));
+                        AddTranslationKey(Format(L"IDS_EA_MAIL_REMARK_%d", i));
+                        for (unsigned int v = 0; v < 3; v++)
+                            AddTranslationKey(Format(L"IDS_EA_MAIL_ALT_%d_%d", v, i));
+                        for (unsigned int v = 0; v < 3; v++)
+                            AddTranslationKey(Format(L"IDS_EA_MAIL_ANSWER_%d_%d", v, i));
+                    }
+                    AddTranslationKey(Format(L"IDS_CITYDESC_%08X", 0));
+                    for (unsigned int countryId = 1; countryId <= 207; countryId++) {
+                        for (unsigned int clubIndex = 1; clubIndex <= 0x2100; clubIndex++)
+                            AddTranslationKey(Format(L"IDS_CITYDESC_%08X", (countryId << 16) | clubIndex));
+                        AddTranslationKey(Format(L"IDS_CITYDESC_%08X", (countryId << 16) | 0xFFFF));
+                    }
+                    for (unsigned int i = 0; i < 2000; i++) {
+                        for (unsigned int v = 0; v < 20; v++)
+                            AddTranslationKey(Format(L"IDS_WEBSITE_%05d_%d", i, v));
+                    }
                 }
-                for (unsigned int i = 0; i < 2000; i++) {
-                    for (unsigned int v = 0; v < 20; v++)
-                        AddTranslationKey(Format(L"IDS_WEBSITE_%05d_%d", i, v));
+                if (game == GAME_FM09) {
+                    for (unsigned int i = 0; i <= 5000; i++) {
+                        for (unsigned int v = 0; v <= 20; v++)
+                            AddTranslationKey(Format(L"TM09_%06d_%02d", i, v));
+                    }
+                    for (unsigned int i = 0; i <= 5000; i++) {
+                        for (unsigned int v = 0; v <= 20; v++)
+                            AddTranslationKey(Format(L"TM09LIVE_%06d_%02d", i, v));
+                    }
                 }
-                for (unsigned int i = 0; i <= 5000; i++) {
-                    for (unsigned int v = 0; v <= 20; v++)
-                        AddTranslationKey(Format(L"TM09_%06d_%02d", i, v));
-                }
-                for (unsigned int i = 0; i <= 5000; i++) {
-                    for (unsigned int v = 0; v <= 20; v++)
-                        AddTranslationKey(Format(L"TM09LIVE_%06d_%02d", i, v));
-                }
+                
             }
             TextFileTable *textFile = nullptr;
             lxw_workbook *excelFile = nullptr;
@@ -322,9 +384,14 @@ int wmain(int argc, wchar_t *argv[]) {
                     unsigned int totalNamed = 0;
                     for (unsigned int i = 0; i < text.m_nNumStringHashes; ++i) {
                         const CStringHash &entry = text.m_pStringHashes[i];
-                        const wchar_t *value = text.GetByHashKey(entry.key);
-                        if (!value)
+                        const wchar_t *valuePtr = text.GetByHashKey(entry.key);
+                        if (!valuePtr)
                             continue;
+                        std::wstring value = valuePtr;
+                        if (windows1251)
+                            ConvertWindows1251ToUTF16(value);
+                        if (!charmap.empty())
+                            ApplyCharmap(value);
                         std::wstring key = std::to_wstring(entry.key);
                         if (format.second == FILETYPE_TR ||!keysPath.empty()) {
                             if (keys.contains(entry.key)) {

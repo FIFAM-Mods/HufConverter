@@ -77,6 +77,24 @@ std::wstring ToUTF16(std::string const &str) {
     return strTo;
 }
 
+void ConvertUTF16ToWindows1251(std::wstring &str) {
+    if (str.empty())
+        return;
+    int size_needed = WideCharToMultiByte(1251, 0, &str[0], (int)str.size(), NULL, 0, NULL, NULL);
+    std::string mbStr(size_needed, 0);
+    WideCharToMultiByte(1251, 0, &str[0], (int)str.size(), &mbStr[0], size_needed, NULL, NULL);
+    str = AtoW(mbStr);
+}
+
+void ConvertWindows1251ToUTF16(std::wstring &str) {
+    if (str.empty())
+        return;
+    std::string mbStr = WtoA(str);
+    int size_needed = MultiByteToWideChar(1251, 0, &mbStr[0], (int)mbStr.size(), NULL, 0);
+    str.resize(size_needed, 0);
+    MultiByteToWideChar(1251, 0, &mbStr[0], (int)mbStr.size(), &str[0], size_needed);
+}
+
 bool IsNumber(const std::wstring &str) {
     if (str.empty())
         return false;

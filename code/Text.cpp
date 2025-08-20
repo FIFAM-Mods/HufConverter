@@ -4,6 +4,8 @@
 #include "utils.h"
 #include "message.h"
 
+unsigned int CText::m_characterMap[65536];
+
 CTextMultibyteStrings::~CTextMultibyteStrings() {
     Clear();
 }
@@ -533,19 +535,18 @@ bool CText::EncodeString(wchar_t const *str) {
 bool CText::LoadTranslationStrings(std::map<unsigned int, std::wstring> const &strings, eGame game) {
     Clear();
     m_game = game;
-    static unsigned int characterMap[65536];
-    memset(characterMap, 0, sizeof(characterMap));
+    memset(m_characterMap, 0, sizeof(m_characterMap));
     for (auto const &[key, str] : strings) {
         for (wchar_t ch : str)
-            characterMap[ch]++;
-        characterMap[0]++;
+            m_characterMap[ch]++;
+        m_characterMap[0]++;
     }
-    m_huffmanInfo.Pack(characterMap);
+    m_huffmanInfo.Pack(m_characterMap);
     if (m_game != GAME_FM09) {
         unsigned int NodeArraySize = (m_game == GAME_TCM2005) ? 256 : 512;
         if (m_huffmanInfo.m_nNumHuffmanChunks > NodeArraySize) {
-            ErrorMessage(Format(L"Reached Huffman Nodes array limit: %d nodes are generated (%d max)",
-                m_huffmanInfo.m_nNumHuffmanChunks, NodeArraySize));
+            ErrorMessage(Format(L"Reached Huffman Nodes array limit.\nNumber of unique characters: %d\nNumber of generated nodes: %d (%d max)",
+                m_huffmanInfo.m_nNumUniqueCharacters, m_huffmanInfo.m_nNumHuffmanChunks, NodeArraySize));
             Clear();
             return false;
         }

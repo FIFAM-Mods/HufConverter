@@ -11,8 +11,30 @@ void Trim(std::wstring &str);
 unsigned int Hash(std::string const &str);
 std::string ToUTF8(std::wstring const &wstr);
 std::wstring ToUTF16(std::string const &str);
+void ConvertUTF16ToWindows1251(std::wstring &str);
+void ConvertWindows1251ToUTF16(std::wstring &str);
 bool IsNumber(const std::wstring &str);
 std::wstring ReplaceAll(std::wstring const &input, std::vector<std::pair<std::wstring, std::wstring>> const &replacements);
+
+template<typename T>
+T SafeConvertInt(std::wstring const &str, bool isHex = false) {
+    T result = 0;
+    try {
+        result = static_cast<T>(std::stoull(str, 0, isHex ? 16 : 10));
+    }
+    catch (...) {}
+    return result;
+}
+
+template<typename T>
+T SafeConvertInt(std::string const &str, bool isHex = false) {
+    T result = 0;
+    try {
+        result = static_cast<T>(std::stoull(str, 0, isHex ? 16 : 10));
+    }
+    catch (...) {}
+    return result;
+}
 
 class FormattingUtils {
     static const unsigned int BUF_SIZE = 10;
