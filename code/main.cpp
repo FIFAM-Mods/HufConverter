@@ -5,8 +5,9 @@
 #include "TextFileTable.h"
 #include "xlsxwriter.h"
 #include "xlnt\xlnt.hpp"
+#include "TranslationKeyComparator.h"
 
-wchar_t const *version = L"1.02";
+wchar_t const *version = L"1.03";
 
 int wmain(int argc, wchar_t *argv[]) {
     enum ErrorType {
@@ -340,7 +341,6 @@ int wmain(int argc, wchar_t *argv[]) {
                             AddTranslationKey(Format(L"TM09LIVE_%06d_%02d", i, v));
                     }
                 }
-                
             }
             TextFileTable *textFile = nullptr;
             lxw_workbook *excelFile = nullptr;
@@ -381,10 +381,17 @@ int wmain(int argc, wchar_t *argv[]) {
             auto sep = (separator == 0) ? fileType[format.second].separator : separator;
             if (success) {
                 if (text.m_pStringHashes && text.m_nNumStringHashes != 0) {
-                    unsigned int totalNamed = 0;
+                    std::vector<TranslationKey> strings;
                     for (unsigned int i = 0; i < text.m_nNumStringHashes; ++i) {
-                        const CStringHash &entry = text.m_pStringHashes[i];
-                        const wchar_t *valuePtr = text.GetByHashKey(entry.key);
+                        CStringHash *entry = &text.m_pStringHashes[i];
+                        std::wstring key = keys.contains(entry->key) ? keys[entry->key] : (L"HASH#" + std::to_wstring(entry->key));
+                        strings.emplace_back(key, entry);
+                    }
+                    std::sort(strings.begin(), strings.end(), TranslationKeyComparator::Compare);
+                    unsigned int totalNamed = 0;
+                    unsigned int excelRow = 1;
+                    for (auto const &key : strings) {
+                        const wchar_t *valuePtr = text.GetByHashKey(key.hash->key);
                         if (!valuePtr)
                             continue;
                         std::wstring value = valuePtr;
@@ -392,27 +399,21 @@ int wmain(int argc, wchar_t *argv[]) {
                             ConvertWindows1251ToUTF16(value);
                         if (!charmap.empty())
                             ApplyCharmap(value);
-                        std::wstring key = std::to_wstring(entry.key);
-                        if (format.second == FILETYPE_TR ||!keysPath.empty()) {
-                            if (keys.contains(entry.key)) {
-                                key = keys[entry.key];
-                                totalNamed++;
-                            }
-                            else
-                                key = L"HASH#" + key;
-                        }
                         if (excelFile) {
-                            worksheet_write_string(excelSheet, i + 1, 0, ToUTF8(key).c_str(), NULL);
-                            worksheet_write_string(excelSheet, i + 1, 1, ToUTF8(value).c_str(), NULL);
+                            worksheet_write_string(excelSheet, excelRow, 0, ToUTF8(key.name).c_str(), NULL);
+                            worksheet_write_string(excelSheet, excelRow, 1, ToUTF8(value).c_str(), NULL);
                             if (hashes)
-                                worksheet_write_number(excelSheet, i + 1, 2, entry.key, NULL);
+                                worksheet_write_number(excelSheet, excelRow, 2, key.hash->key, NULL);
                         }
                         else if (textFile) {
                             if (hashes)
-                                textFile->AddRow({ key, (sep == L'|') ? ReplaceAll(value, SymbolsToTokens) : value, std::to_wstring(entry.key) });
+                                textFile->AddRow({ key.name, (sep == L'|') ? ReplaceAll(value, SymbolsToTokens) : value, std::to_wstring(key.hash->key) });
                             else
-                                textFile->AddRow({ key, (sep == L'|') ? ReplaceAll(value, SymbolsToTokens) : value });
+                                textFile->AddRow({ key.name, (sep == L'|') ? ReplaceAll(value, SymbolsToTokens) : value });
                         }
+                        if (key.category != KEYCAT_HASH)
+                            totalNamed++;
+                        excelRow++;
                     }
                     if (stats) {
                         ::Message(Format(L"Total named: %d/%d (%.2f%%)", totalNamed, text.m_nNumStringHashes,

@@ -24,6 +24,9 @@
     <ClCompile Include="code\utils.cpp">
       <Filter>code</Filter>
     </ClCompile>
+    <ClCompile Include="code\TranslationKeyComparator.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="code\commandline.h">
@@ -39,6 +42,9 @@
       <Filter>code</Filter>
     </ClInclude>
     <ClInclude Include="code\utils.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\TranslationKeyComparator.h">
       <Filter>code</Filter>
     </ClInclude>
   </ItemGroup>

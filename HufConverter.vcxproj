@@ -8,6 +8,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="code\commandline.cpp" />
+    <ClCompile Include="code\TranslationKeyComparator.cpp" />
     <ClCompile Include="code\main.cpp" />
     <ClCompile Include="code\message.cpp" />
     <ClCompile Include="code\Text.cpp" />
@@ -16,6 +17,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="code\commandline.h" />
+    <ClInclude Include="code\TranslationKeyComparator.h" />
     <ClInclude Include="code\message.h" />
     <ClInclude Include="code\Text.h" />
     <ClInclude Include="code\TextFileTable.h" />
@@ -48,7 +50,7 @@
     <LinkIncremental>false</LinkIncremental>
     <TargetName>HufConverter</TargetName>
     <OutDir>$(SolutionDir)output\</OutDir>
-    <IntDir>$(SolutionDir).obj</IntDir>
+    <IntDir>$(SolutionDir).obj\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>

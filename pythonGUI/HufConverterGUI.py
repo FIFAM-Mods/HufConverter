@@ -16,8 +16,8 @@ class HufConverterGUI(QWidget):
         style = self.style()
         icon = style.standardIcon(QStyle.SP_FileDialogListView)
         self.setWindowIcon(icon)
-        self.setWindowTitle("HufConverterGUI by Dmitri (1.02)")
-        self.setFixedSize(600, 300)
+        self.setWindowTitle("HufConverterGUI by Dmitri (1.03)")
+        self.setFixedSize(600, 400)
         self.init_ui()
 
     def init_ui(self):
@@ -51,7 +51,7 @@ class HufConverterGUI(QWidget):
         layout.addWidget(self.inputFileEdit, 1, 1)
         browseBtn = QPushButton("Browse")
         browseBtn.setFont(font)
-        browseBtn.setFixedHeight(28)
+        browseBtn.setFixedHeight(24)
         browseBtn.clicked.connect(self.browse_input_file)
         layout.addWidget(browseBtn, 1, 2)
 
@@ -81,30 +81,28 @@ class HufConverterGUI(QWidget):
         self.outputFormatCombo = QComboBox()
         self.outputFormatCombo.setFont(font)
         layout.addWidget(self.outputFormatCombo, 3, 1, 1, 2)
+        
+        # Output Folder
+        output_folder_label = QLabel("Output Dir (Optional):")
+        output_folder_label.setFont(font)
+        layout.addWidget(output_folder_label, 4, 0)
+        self.outputFolderEdit = QLineEdit()
+        self.outputFolderEdit.setFont(font)
+        layout.addWidget(self.outputFolderEdit, 4, 1)
+        browseOutputBtn = QPushButton("Browse")
+        browseOutputBtn.setFont(font)
+        browseOutputBtn.setFixedHeight(24)
+        browseOutputBtn.clicked.connect(self.browse_output_folder)
+        layout.addWidget(browseOutputBtn, 4, 2)
 
-        # Output File (Optional)
-        output_file_label = QLabel("Output File (Optional):")
+        # Output Filename (Optional)
+        output_file_label = QLabel("Output Name (Optional):")
         output_file_label.setFont(font)
-        layout.addWidget(output_file_label, 4, 0)
+        layout.addWidget(output_file_label, 5, 0)
         self.outputFileEdit = QLineEdit()
         self.outputFileEdit.setFont(font)
-        layout.addWidget(self.outputFileEdit, 4, 1, 1, 2)
-
-        # Row layout for checkboxes + language
-        rowLayout = QHBoxLayout()
-
-        # Match Keys
-        self.matchKeysCheck = QCheckBox("Match Key Names")
-        self.matchKeysCheck.setFont(font)
-        self.matchKeysCheck.setChecked(True)
-        rowLayout.addWidget(self.matchKeysCheck)
-
-        # Write Hashes
-        self.hashesCheck = QCheckBox("Write Hashes")
-        self.hashesCheck.setFont(font)
-        self.hashesCheck.setChecked(False)
-        rowLayout.addWidget(self.hashesCheck)
-
+        layout.addWidget(self.outputFileEdit, 5, 1, 1, 2)
+        
         # Language combobox
         self.languageCombo = QComboBox()
         self.languageCombo.setFont(font)
@@ -112,17 +110,67 @@ class HufConverterGUI(QWidget):
         self.languageLabel = QLabel("Language:")
         self.languageLabel.setFont(font)
         self.languageLabel.setFixedWidth(80)
-        rowLayout.addWidget(self.languageLabel)
-        rowLayout.addWidget(self.languageCombo)
+        layout.addWidget(self.languageLabel, 6, 0)
+        layout.addWidget(self.languageCombo, 6, 1, 1, 2)
+        
+        # Match Keys
+        self.matchKeysCheck = QCheckBox("Match Key Names")
+        self.matchKeysCheck.setFont(font)
+        self.matchKeysCheck.setChecked(True)
+        self.matchKeysCheck.stateChanged.connect(self.match_keys_checked)
+        layout.addWidget(self.matchKeysCheck, 7, 0)
+        self.keysFileEdit = QLineEdit()
+        self.keysFileEdit.setFont(font)
+        self.keysFileEdit.setText("keys.txt")
+        layout.addWidget(self.keysFileEdit, 7, 1)
+        self.browseKeysBtn = QPushButton("Browse")
+        self.browseKeysBtn.setFont(font)
+        self.browseKeysBtn.setFixedHeight(24)
+        self.browseKeysBtn.clicked.connect(self.browse_keys_file)
+        layout.addWidget(self.browseKeysBtn, 7, 2)
+        
+        # Charmap File
+        charmap_label = QLabel("Charmap File (Optional):")
+        charmap_label.setFont(font)
+        layout.addWidget(charmap_label, 8, 0)
+        self.charmapFileEdit = QLineEdit()
+        self.charmapFileEdit.setFont(font)
+        layout.addWidget(self.charmapFileEdit, 8, 1)
+        browseCharmapBtn = QPushButton("Browse")
+        browseCharmapBtn.setFont(font)
+        browseCharmapBtn.setFixedHeight(24)
+        browseCharmapBtn.clicked.connect(self.browse_charmap_file)
+        layout.addWidget(browseCharmapBtn, 8, 2)
 
-        layout.addLayout(rowLayout, 5, 0, 1, 3)
+        # Row layout for checkboxes
+        rowLayout = QHBoxLayout()
+
+        # Write Hashes
+        self.hashesCheck = QCheckBox("Write Hashes")
+        self.hashesCheck.setFont(font)
+        self.hashesCheck.setChecked(False)
+        rowLayout.addWidget(self.hashesCheck)
+        
+        # Windows-1251
+        self.windows1251check = QCheckBox("Windows-1251")
+        self.windows1251check.setFont(font)
+        self.windows1251check.setChecked(False)
+        rowLayout.addWidget(self.windows1251check)
+        
+        # Show Stats
+        self.statsCheck = QCheckBox("Show Stats")
+        self.statsCheck.setFont(font)
+        self.statsCheck.setChecked(False)
+        rowLayout.addWidget(self.statsCheck)
+        
+        layout.addLayout(rowLayout, 9, 0, 1, 3)
         
         # Convert Button
         self.convertBtn = QPushButton("Convert")
         self.convertBtn.setFont(largeFont)
         self.convertBtn.setFixedHeight(40)
         self.convertBtn.clicked.connect(self.convert_file)
-        layout.addWidget(self.convertBtn, 6, 0, 1, 3)
+        layout.addWidget(self.convertBtn, 10, 0, 1, 3)
 
         self.setLayout(layout)
         self.inputFormatCombo.setCurrentIndex(0)
@@ -132,6 +180,25 @@ class HufConverterGUI(QWidget):
         fileName, _ = QFileDialog.getOpenFileName(self, "Select Input File")
         if fileName:
             self.inputFileEdit.setText(fileName)
+
+    def browse_output_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Output Folder") 
+        if folder:
+            self.outputFolderEdit.setText(folder)
+
+    def browse_keys_file(self):
+        fileName, _ = QFileDialog.getOpenFileName(self, "Select Input File")
+        if fileName:
+            self.keysFileEdit.setText(fileName)
+
+    def match_keys_checked(self, state):
+        self.keysFileEdit.setEnabled(state != Qt.Unchecked)
+        self.browseKeysBtn.setEnabled(state != Qt.Unchecked)
+
+    def browse_charmap_file(self):
+        fileName, _ = QFileDialog.getOpenFileName(self, "Select Character Mapping File")
+        if fileName:
+            self.charmapFileEdit.setText(fileName)
 
     def detect_input_format(self):
         path = self.inputFileEdit.text().strip().lower()
@@ -221,17 +288,16 @@ class HufConverterGUI(QWidget):
 
     def convert_file(self):
         input_path = self.inputFileEdit.text().strip()
-        output_path = self.outputFileEdit.text().strip()
+        output_filename = self.outputFileEdit.text().strip()
+        output_folder = self.outputFolderEdit.text().strip()
 
         if not os.path.isfile(input_path):
             QMessageBox.critical(self, "Error", "Invalid input file.")
             return
 
-        if output_path:
-            output_dir = os.path.dirname(output_path)
-            if output_dir and not os.path.isdir(output_dir):
-                QMessageBox.critical(self, "Error", "Output directory does not exist.")
-                return
+        if output_folder and not os.path.isdir(output_folder):
+            QMessageBox.critical(self, "Error", "Output directory does not exist.")
+            return
 
         base_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__)
         exe_path = os.path.join(base_dir, "HufConverter.exe")
@@ -246,22 +312,48 @@ class HufConverterGUI(QWidget):
             ("Translation File (.HUF)", "Semicolon Separated (.CSV) (UTF-8 BOM)"): "huf2csv",
             ("Translation File (.HUF)", "Tab Separated (.TSV) (UTF-8 BOM)"): "huf2tsv",
             ("Translation File (.HUF)", "Custom Translation (.TR) (UTF-8 BOM)"): "huf2tr",
-            ("Excel Workbook (.XLSX)", "Translation File (.HUF)" ): "xlsx2huf",
-            ("Unicode Text (.TXT)", "Translation File (.HUF)" ): "txt2huf",
-            ("Comma Separated (.CSV)", "Translation File (.HUF)" ): "csv2huf",
-            ("Semicolon Separated (.CSV)", "Translation File (.HUF)" ): "csv2huf",
-            ("Tab Separated (.TSV)", "Translation File (.HUF)" ): "tsv2huf",
-            ("Custom Translation (.TR)", "Translation File (.HUF)" ): "tr2huf"
+            ("Excel Workbook (.XLSX)", "Translation File (.HUF)"): "xlsx2huf",
+            ("Unicode Text (.TXT)", "Translation File (.HUF)"): "txt2huf",
+            ("Comma Separated (.CSV)", "Translation File (.HUF)"): "csv2huf",
+            ("Semicolon Separated (.CSV)", "Translation File (.HUF)"): "csv2huf",
+            ("Tab Separated (.TSV)", "Translation File (.HUF)"): "tsv2huf",
+            ("Custom Translation (.TR)", "Translation File (.HUF)"): "tr2huf"
         }
-        
+
         input_fmt = self.inputFormatCombo.currentText()
         output_fmt = self.outputFormatCombo.currentText()
-        
+
         operation = op_map.get((input_fmt, output_fmt))
         if not operation:
             QMessageBox.critical(self, "Error", "Unsupported conversion type.")
             return
-        
+
+        ext_map = {
+            "Excel Workbook (.XLSX)": ".xlsx",
+            "Unicode Text (.TXT) (UTF-16 LE BOM)": ".txt",
+            "Comma Separated (.CSV) (UTF-8 BOM)": ".csv",
+            "Semicolon Separated (.CSV) (UTF-8 BOM)": ".csv",
+            "Tab Separated (.TSV) (UTF-8 BOM)": ".tsv",
+            "Custom Translation (.TR) (UTF-8 BOM)": ".tr",
+            "Translation File (.HUF)": ".huf",
+        }
+        out_ext = ext_map.get(output_fmt, "")
+
+        output_path = ""
+        if output_folder and output_filename:  
+            name, ext = os.path.splitext(output_filename)
+            if not ext:
+                output_filename += out_ext
+            output_path = os.path.join(output_folder, output_filename)
+        elif output_folder and not output_filename:  
+            input_name = os.path.splitext(os.path.basename(input_path))[0]
+            output_path = os.path.join(output_folder, input_name + out_ext)
+        elif output_filename and not output_folder:  
+            name, ext = os.path.splitext(output_filename)
+            if not ext:
+                output_filename += out_ext
+            output_path = output_filename
+
         args = [exe_path, operation, "-i", input_path]
 
         if output_path:
@@ -276,12 +368,23 @@ class HufConverterGUI(QWidget):
         if "Semicolon" in input_fmt or "Semicolon" in output_fmt:
             args += ["-separator", ";"]
 
-        if not self.matchKeysCheck.isChecked():
+        if self.matchKeysCheck.isChecked() and self.keysFileEdit.text().strip():
+            args += ["-keys", self.keysFileEdit.text().strip()]
+        else:
             args += ["-keys", "none"]
+
+        if self.charmapFileEdit.text().strip():
+            args += ["-charmap", self.charmapFileEdit.text().strip()]
 
         if self.hashesCheck.isChecked():
             args += ["-hashes"]
-            
+
+        if self.windows1251check.isChecked():
+            args += ["-windows1251"]
+
+        if self.statsCheck.isChecked():
+            args += ["-stats"]
+
         language_id = self.languageCombo.currentIndex() + 1
         args += ["-language", str(language_id)]
 
@@ -298,6 +401,8 @@ class HufConverterGUI(QWidget):
         self.setDisabled(True)
         QApplication.processEvents()
         try:
+            #import shlex
+            #print(" ".join(shlex.quote(a) for a in args))
             if platform.system() == "Windows":
                 si = subprocess.STARTUPINFO()
                 si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
@@ -309,7 +414,7 @@ class HufConverterGUI(QWidget):
                 )
             else:
                 result = subprocess.run(args, check=False)
-        
+
             if result.returncode == 0:
                 QMessageBox.information(self, "Success", "Conversion completed successfully.")
             else:
